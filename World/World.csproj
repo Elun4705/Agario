@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\assignment-seven---chatting-andyluna\FileLogger\Logger.csproj" />
+    <ProjectReference Include="..\GameObject\Models.csproj" />
+  </ItemGroup>
+
+</Project>

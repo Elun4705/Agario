@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ClientGUI.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Spacing="25"
+            Padding="30,0"
+            VerticalOptions="Center">
+            <HorizontalStackLayout>
+                <VerticalStackLayout
+                    Spacing = "40"
+                    Padding = "360,0">
+                    <HorizontalStackLayout>
+                        <Label
+                        x:Name="PlayerLabel"
+                        IsVisible="true"
+                        VerticalTextAlignment="Center"
+                        Text="Player Name:  "
+                        FontSize="18" />
+
+                        <Entry
+                        x:Name="PlayerName"
+                        IsVisible="true"
+                        WidthRequest="100"
+                        VerticalTextAlignment="Center"
+                        FontSize="15"
+                        Completed="ClientConnectToServer"/>
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout>
+                        <Label
+                        x:Name="ErrorLabel"
+                        Text="Error Couldn't Connect To Server"
+                        IsVisible="false"
+                        FontSize="18" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout>
+                        <Label
+                        x:Name="ServerNameLabel"
+                        VerticalTextAlignment="Center"
+                        IsVisible="true"
+                        Text="Server IP/DNS:  "
+                        FontSize="18" />
+
+                        <Entry
+                        x:Name="ServerName"
+                        WidthRequest="100"
+                        IsVisible="true"
+                        VerticalTextAlignment="Center"
+                        FontSize="18"
+                        Text="localhost"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout>
+                <VerticalStackLayout
+                    Spacing = "10"
+                    Padding = "75,0">
+                    <HorizontalStackLayout>
+                        <Label
+                            x:Name="SplitCommand"
+                        FontSize="18"
+                        Text="When you think the mass is big enough, tap the map to split!"
+                        IsVisible="false"/>
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout>
+                        <Label
+                        x:Name="CircleCenter"
+                        FontSize="16"
+                        Text="Circle Center: "
+                        IsVisible="false"/>
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout>
+                        <Label
+                        x:Name="Direction"
+                        FontSize="16"
+                        Text="Direction: "
+                        IsVisible="false"/>
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout>
+                        <Label
+                        x:Name="FPS"
+                        FontSize="16"
+                        Text="Hopefully FPS"
+                        IsVisible="false"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+            <GraphicsView
+                    x:Name="PlaySurface"
+                    IsVisible="false"
+                    VerticalOptions="Center"
+                    BackgroundColor="Blue"
+                    HeightRequest="500"
+                    WidthRequest="500">
+                <GraphicsView.GestureRecognizers>
+                    <PointerGestureRecognizer PointerMoved="PointerChanged"/>
+                    <TapGestureRecognizer Tapped="CellSplit"/>
+                </GraphicsView.GestureRecognizers>
+            </GraphicsView>
+            <HorizontalStackLayout>
+                <VerticalStackLayout
+                    Spacing = "20"
+                    Padding = "75,0">
+                    <HorizontalStackLayout>
+                        <Button
+                        x:Name="Restart"
+                        Text="Start a New Game"
+                        IsVisible="false"
+                        Clicked="RestartGame"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,518 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Communications</name>
+    </assembly>
+    <members>
+        <member name="T:Communications.INetworking">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="P:Communications.INetworking.Disconnected">
+            <summary> 
+              true if the connection has been disconnected
+            </summary>
+        </member>
+        <member name="P:Communications.INetworking.ID">
+            <summary>
+              A Unique identifier for the entity on the "other end" of the wire.
+            </summary>
+        </member>
+        <member name="P:Communications.INetworking.IsConnected">
+            <summary>
+              True if there is an active connection.
+            </summary>
+        </member>
+        <member name="P:Communications.INetworking.IsWaitingForClients">
+            <summary>
+              Used by server type programs which have a port open listening
+              for clients to connect.
+              
+              True if the connect loop is active.
+            </summary>
+        </member>
+        <member name="P:Communications.INetworking.RemoteAddressPort">
+            <summary>
+              Return the address/port of the program we are talking to.  
+              This would be the tcpClient remote end point if it exists, otherwise: "Disconnected"
+            </summary>
+        </member>
+        <member name="M:Communications.INetworking.AwaitMessagesAsync(System.Boolean)">
+            <summary>
+              <para>
+                Precondition: Networking socket has already been connected.
+              </para>
+              
+              <para>
+                Used when one side of the connection waits for a network messages 
+                from a the other (e.g., client -> server, or server -> client).
+                Usually repeated (see infinite).
+              </para>
+              
+              <para>
+                Upon a complete message being received (as a string), HandleMessage
+                function is called with the message.
+              </para>
+              
+              <para>
+                If the ReadAsync is "interrupted" (by the connection being closed),
+                the "HandleDisconnect" function will be called and this
+                function will end.
+              </para>
+              
+              <para>
+                Note: it is assumed that this code will run on its own thread and thus the handle_message (and 
+                handle_disconnect) methods are also executed on that thread. (No new threads are created inside this method.)
+              </para>
+            </summary>
+            
+            <param name="infinite">
+               if true, then continually await new messages. If false, stop after first complete message received.
+            </param>
+        </member>
+        <member name="M:Communications.INetworking.Connect(System.String,System.Int32)">
+            <summary>
+              Open a connection to the given host/port
+            </summary>
+            <param name="host">e.g., 127.0.0.1, or "localhost", or "thebes.cs.utah.edu"</param>
+            <param name="port">e.g., 11000</param>
+            <exception cref="T:System.Exception"> Handle any exceptions and throws when unable to connect.  See TcpClient documentation.
+                https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.tcpclient.-ctor?view=net-7.0#system-net-sockets-tcpclient-ctor
+            </exception>
+        </member>
+        <member name="M:Communications.INetworking.Disconnect">
+            <summary>
+              <para>
+                Close the connection between us and them.
+              </para>
+              <para>
+                Important: the reportDisconnect handler will _not_ be called.
+              </para>
+              <para>
+                Note: this does not stop "waiting for connects" which should be stopped with: StopWaitingForclients
+              </para>
+            </summary>
+        </member>
+        <member name="M:Communications.INetworking.Send(System.String)">
+            <summary>
+              <para>
+                Send a message across the channel (i.e., the TCP Client Stream).  This method
+                should use WriteAsync and the await keyword.
+              </para>
+              
+              <para>
+                Warning: The message should not contain the termination character.  If so, these will
+                be replaced with the character '\r'. (Don't use \r as a termination character.)
+              </para>
+              
+              <para>
+                Warning: use UTF8 encoding before sending the message.
+              </para>
+              
+              <para>
+                An exception upon writing the message to the client stream (i.e., trying to
+                send to a "disconnected" recipient) will result in an exception that must be handled.
+                Upon this exception the ReportDisconnect method must be invoked letting the 
+                user of this object know that an error has occurred.
+              </para>
+              
+              <para>
+                If this method is called when the connection is already closed, the send should simply return without
+                doing anything.
+              </para>
+            </summary>
+            <param name="text"> the message to send </param>
+        </member>
+        <member name="M:Communications.INetworking.StopWaitingForClients">
+            <summary>
+              Stop listening for connections.  This is achieved using the Cancellation Token Source.
+            </summary>
+        </member>
+        <member name="M:Communications.INetworking.StopWaitingForMessages">
+            <summary>
+              Stop listening for messages.  This is achieved using the Cancellation Token Source
+            </summary>
+        </member>
+        <member name="M:Communications.INetworking.WaitForClients(System.Int32,System.Boolean)">
+            <summary>
+              <para>
+                Handle client connections;  wait for network connections, and create a new thread to handle
+                communications from the new client.  You will need a TcpListener to actually wait for 
+                clients.
+              </para>
+              
+              <para>
+                This routine runs indefinitely until stopped (could accept many clients).
+                Important: The TcpListener should have a cancellationTokenSource attached to it in order
+                to allow for it to be shutdown.
+              </para>
+              
+              <para>
+                Important: the communications with the new client will be run on its own thread, with
+                its own Networking object.
+              </para>
+              
+              <para>
+                Important: you will need to use a TcpListener object and create a new Networking object (which will need
+                the original call back methods instantiated). 
+                The networking object will need to store the tcp client object returned from the tcp listener.
+                Then use the networking object to wait for messages.
+              </para>
+              
+              <para>
+                Warning: All connected clients will "share" the same onMessage and 
+                onDisconnect methods, so those methods had better handle this Race Condition.  (Note: 
+                the locking does _not_ occur in the networking code.)
+              </para>
+            </summary>
+            <param name="port"> Port to listen on </param>
+            <param name="infinite"> If true, then each client gets a thread that read an infinite number of messages</param>
+        </member>
+        <member name="T:Communications.Networking">
+            <summary>
+              
+              <list type="bullet">
+                <item>Author: H. James de St. Germain</item>
+                <item>Date: Spring 2022</item>
+                <item>Updated: Spring 2023</item>
+                <item>Copyright: Students are not allowed to use this code.</item>   
+              </list>
+              
+              <para>
+                Abstraction for network communications.
+              </para>
+              
+              <para>
+                Usage: Programs which need to communicate asynchronously with remote network locations
+                can use this class to facilitate the communications.
+              </para>
+              
+              <para>
+                Upon construction of the Networking object, the main program must define and provide three
+                callback routines associated with the phases of communication, including: (1) Connect, 
+                (2) Messages Arriving, and (3) Disconnect.  
+              </para>
+              
+              <para>
+                Each of these callbacks will be called by the Networking object at the appropriate time.
+              </para>
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._handleMessage">
+            <summary>
+              Method called every time a fullMessage is received from the remote end point
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._reportDisconnect">
+            <summary>
+              Method called to let the application know that remote end point has disconnected
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._handleConnect">
+            <summary>
+              Method called when the remote end point is first connected to
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._logger">
+            <summary>
+            Messages sent to the logger (for debug/development output purposes) will be "echoed" to the appropriate
+            output channels.
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._WaitForClientsCancellation">
+            <summary>
+            Used to allow server shutdown (gracefully)
+            </summary>
+        </member>
+        <member name="P:Communications.Networking.IsWaitingForClients">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._WaitForMessagesCancellation">
+            <summary>
+            Used to gracefully stop waiting for messages
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._tcpClient">
+            <summary>
+              The connection element through which all the communications flow.
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._termCharacter">
+            <summary>
+              Character defining the end of a fullMessage (e.g., \n)
+            </summary>
+        </member>
+        <member name="F:Communications.Networking._id">
+            <summary>
+             See ID
+            </summary>
+        </member>
+        <member name="P:Communications.Networking.ID">
+            <summary>
+              A Unique identifier representing the entity on the "other end" of the wire.
+            </summary>
+        </member>
+        <member name="P:Communications.Networking.Disconnected">
+            <returns> true if the connection has been disconnected</returns>
+        </member>
+        <member name="P:Communications.Networking.RemoteAddressPort">
+            <summary>
+              Return the address/port of the program we are talking to.  
+              This would be the tcpClient remote end point if it exists, otherwise: "Disconnected"
+            </summary>
+        </member>
+        <member name="P:Communications.Networking.IsConnected">
+            <summary>
+              Return connected status
+            </summary>
+        </member>
+        <member name="M:Communications.Networking.#ctor(Microsoft.Extensions.Logging.ILogger,Communications.ReportConnectionEstablished,Communications.ReportDisconnect,Communications.ReportMessageArrived,System.Char)">
+            <summary>
+              <para>
+                Constructor to prepare a new network connection.  
+              </para>
+              <para>
+                Warning: does not try to connect until the explicit Connect method is called.
+              </para>
+            </summary>
+            <param name="logger"> logging object </param>
+            <param name="onConnect"> method informing "parent" of a connect happening</param>
+            <param name="onDisconnect"> method informing "parent" that the connection has been disconnected</param>
+            <param name="onMessage"> method informing "parent" that a complete fullMessage has come in</param>
+            <param name="terminationCharacter"> A character used by the networking code to define the end of 
+              one fullMessage.  This character is "illegal" for use in a fullMessage.  The Send code will replace
+              all instances of this character with "\r".
+            </param>
+        </member>
+        <member name="M:Communications.Networking.Connect(System.String,System.Int32)">
+            <summary>
+              Open a connection to the given host/port
+            </summary>
+            <param name="host">e.g., 127.0.0.1, or "localhost", or "thebes.cs.utah.edu"</param>
+            <param name="port">e.g., 11000</param>
+            <exception cref="T:System.Exception"> Handle any exceptions and throws when unable to connect.  See TcpClient documentation.
+                https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.tcpclient.-ctor?view=net-7.0#system-net-sockets-tcpclient-ctor
+            </exception>
+        </member>
+        <member name="M:Communications.Networking.AwaitMessagesAsync(System.Boolean)">
+            <summary>
+              <para>
+                Precondition: Already connected to host.
+              </para>
+              <para>
+                Used when one side of the connection waits for a network messages 
+                from a the other (e.g., client -> server, or server -> client).
+                Usually repeated (see infinite).
+              </para>
+              <para>
+                Upon a complete fullMessage being received (as a string), the fullMessage
+                is transmitted to the "handle_message" function.
+              </para>
+              <para>
+                If the ReadAsync is "interrupted" (by the connection being closed),
+                the "handle_disconnect" function will be called and this
+                function will _terminate_.
+              </para>
+              
+              <para>
+                Note: it is assumed that this code will run on its own thread and thus the handle_message (and 
+                handle_disconnect) methods are also executed on that thread. (No new threads are created inside this method.)
+              </para>
+            </summary>
+            <param name="infinite"> if true, then continually await new messages. If false, stop after first complete fullMessage received.</param>
+            <returns></returns>
+        </member>
+        <member name="M:Communications.Networking.CheckForMessageCompleteness(System.Text.StringBuilder,System.String@)">
+            <summary>
+              Given a string (actually a string builder object)
+              check to see if it contains one or more messages as defined by
+              our protocol (the period '.').
+            </summary>
+            <param name="data"> all characters encountered so far.  Will have fullMessage removed (if found)!</param>
+            <param name="message"> if a termination character is found return characters up until there (the fullMessage)</param>
+            <returns>true if a fullMessage (i.e., termination character) is found</returns>
+        </member>
+        <member name="M:Communications.Networking.WaitForClients(System.Int32,System.Boolean)">
+            <summary>
+              <para>
+                Handle client connections;  wait for network connections, and create a new thread to handle
+                communications from the new client.  You will need a TcpListener to actually wait for 
+                clients.
+              </para>
+              <para>
+                This routine runs indefinitely until stopped (could accept many clients).
+                Important: The TcpListener should have a cancellationTokenSource attached to it in order
+                to allow for it to be shutdown.
+              </para>
+              <para>
+                Important: the communications with the new client will be run on its own thread, with
+                its own Networking object.
+              </para>
+              <para>
+                Important: the newly created network object will automatically be set to wait for messages.
+              </para>
+              <para>
+                Upon connection: the saved (upon constructor) OnConnect method will be called.
+              </para>
+              <para>
+                Warning: All connected clients will "share" the same onMessage and 
+                onDisconnect methods, so those methods had better handle this Race Condition.
+              </para>
+            </summary>
+            <param name="port"> Port to listen on </param>
+            <param name="infinite"> If true, then each client gets a thread that read an infinite number of messages</param>
+        </member>
+        <member name="M:Communications.Networking.StopWaitingForClients">
+            <summary>
+              Stop listening for connections.  This is achieved using the Cancellation Token Source.
+            </summary>
+        </member>
+        <member name="M:Communications.Networking.StopWaitingForMessages">
+            <summary>
+              Stop listening for messages.  This is achieved using the Cancellation Token Source
+            </summary>
+        </member>
+        <member name="M:Communications.Networking.Disconnect">
+            <summary>
+              <para>
+                Close the connection between us and them.
+              </para>
+              <para>
+                Important: the reportDisconnect handler will _not_ be called.
+              </para>
+              <para>
+                Note: this does not stop "waiting for connects" which should be stopped with: StopWaitingForclients
+              </para>
+            </summary>
+        </member>
+        <member name="M:Communications.Networking.Send(System.String)">
+            <summary>
+              <para>
+                Send a fullMessage across the channel (i.e., the TCP Client Stream).  This method
+                should use WriteAsync and the await keyword.
+              </para>
+              <para>
+                Warning: The fullMessage should not contain the termination character.  If so, these will
+                be replaced with the character '\r'.
+              </para>
+              <para>
+                Warning: use UTF8 encoding before sending the fullMessage.
+              </para>
+              <para>
+                An exception upon writing the fullMessage to the client stream (i.e., trying to
+                send to a "disconnected" recipient) will result in an exception that must be handled.
+                Upon this exception the OnDisconnect method must be invoked letting the 
+                user of this object know that an error has occurred.
+              </para>
+              <para>
+                If the connection has been closed already, the send will simply return without
+                doing anything.
+              </para>
+            </summary>
+            <param name="text"> the fullMessage to send </param>
+        </member>
+        <member name="T:Communications.ReportMessageArrived">
+            <summary>
+              A method that will be called by the networking code when a fullMessage comes across the channel.
+            </summary>
+            <param name="channel">The Networking Object itself</param>
+            <param name="message">The Message that has arrived</param>
+        </member>
+        <member name="T:Communications.ReportDisconnect">
+            <summary>
+              A method that will be called by this code when the channel is disconnected.
+              <para>
+                Usage: an outside code base (e.g., a web browser) will be using a Networking object
+                to communicate (e.g., with a web server).  If the web server "goes down" (or isn't up
+                in the first place) the outside code will have this function called so it can take
+                the appropriate action (e.g., put up a "504" web page).
+              </para>
+            </summary>
+            <param name="channel"> The networking object. </param>
+        </member>
+        <member name="T:Communications.ReportConnectionEstablished">
+            <summary>
+             <para>
+               The code using the Networking object will have this method called when
+               the remote program is connected to.
+             </para>
+            </summary>
+            <param name="channel">The Networking Object itself</param>
+        </member>
+        <member name="T:Communications.NullNetwork">
+            <summary>
+              A Network object that doesn't do anything....
+            </summary>
+        </member>
+        <member name="P:Communications.NullNetwork.Instance">
+            <summary>
+            Returns the shared instance of <see cref="T:Microsoft.Extensions.Logging.Abstractions.NullLogger"/>.
+            </summary>
+        </member>
+        <member name="P:Communications.NullNetwork.Disconnected">
+            <inheritdoc/>
+        </member>
+        <member name="P:Communications.NullNetwork.ID">
+            <inheritdoc/>
+        </member>
+        <member name="P:Communications.NullNetwork.IsConnected">
+            <inheritdoc/>
+        </member>
+        <member name="P:Communications.NullNetwork.IsWaitingForClients">
+            <inheritdoc/>
+        </member>
+        <member name="P:Communications.NullNetwork.RemoteAddressPort">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.Connect(System.String,System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.AwaitMessagesAsync(System.Boolean)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.WaitForClients(System.Int32,System.Boolean)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.Disconnect">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.Send(System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.StopWaitingForClients">
+            <inheritdoc/>
+        </member>
+        <member name="M:Communications.NullNetwork.StopWaitingForMessages">
+            <inheritdoc/>
+        </member>
+        <member name="T:Communications.Properties.Resources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:Communications.Properties.Resources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:Communications.Properties.Resources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:Communications.Properties.Resources.Copyright">
+            <summary>
+              Looks up a localized string similar to Jim was here.
+            </summary>
+        </member>
+        <member name="P:Communications.Properties.Resources.LegalCopyright">
+            <summary>
+              Looks up a localized string similar to Jim was here2.
+            </summary>
+        </member>
+    </members>
+</doc>
